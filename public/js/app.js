@@ -1,4 +1,3 @@
-
 document.addEventListener('DOMContentLoaded',()=>{ 
   const alertArr = document.querySelectorAll('.alert')
   const alertT = Array.from(alertArr)
@@ -6,8 +5,10 @@ document.addEventListener('DOMContentLoaded',()=>{
     return {
       next:function(){
         const alert = document.querySelector('.alert')
-        alert.remove()
-        arr.shift()
+        if(alert){
+          alert.remove()
+          arr.shift()
+        }
       }
     }
   }

@@ -6,7 +6,7 @@ const path = require('path')
 const methodOverride = require('method-override')
 const flash = require('connect-flash')
 const session = require('express-session')
-
+const passport = require('passport')
 
 const app = express()
 
@@ -14,9 +14,12 @@ const app = express()
 mongoose.connect('mongodb://localhost/vidjot-v1',{ useNewUrlParser: true })
   .then(()=>console.log('MongoDB Connected...'))
   .catch(ex=>console.log(ex))
-//load idea model
-const Idea = require('./model/Idea')
-
+//load router
+const ideas = require('./route/ideas')
+const home = require('./route/home')
+const users = require('./route/users')
+//passport config file
+require('./config/passport')(passport)
 
 //handlebars Middleware
 app.engine('handlebars', exphbs({defaultLayout: 'main'}))
@@ -36,6 +39,9 @@ app.use(session({
 }))
 // connect middleware
 app.use(flash());
+//passport middleware
+app.use(passport.initialize());
+app.use(passport.session());
 
 //global variables
 app.use((req,res,next)=>{
@@ -43,83 +49,13 @@ app.use((req,res,next)=>{
   res.locals.alert = req.flash('alert')
   res.locals.error_msg= req.flash('error_msg')
   res.locals.error= req.flash('error')
+  res.locals.user=req.user || null
   next()
 })
-
-
-
-//Index Route
-app.get('/',async(req,res)=>{
-  const title ='Welcome'
-  res.render('index',{title:title})
-})
-// About page
-app.get('/about',async(req,res)=>{
-  
-  res.render('about')
-})
-
-// Add Idea Form
-app.get('/ideas/add',async(req,res)=>{
-    res.render('ideas/add')
-})
-//Ideas Route
-app.get('/ideas',async(req,res)=>{
-    const ideas = await Idea.find({}).sort({date:'desc'})
-    res.render('ideas/index',{ideas:ideas})
-})
-
-//process form
-app.post('/ideas',async(req,res)=>{
-  let errors=[]
-  if(req.body.title===''){errors.push({text:'Please add a title'})}
-  if(req.body.details===''){errors.push({text:'Please add some details'})}
-  if(errors.length >0){res.render('ideas/add',{
-    errors:errors,
-    title:req.body.title,
-    details:req.body.details
-  })
-  }else{ 
-    const newIdea = new Idea({
-      title:req.body.title,
-      details:req.body.details
-    }) 
-     await newIdea .save()
-     req.flash('success_msg','Video Idea Added')
-     res.redirect('/ideas')
-  }
-})
-
-//Edit idea form
-app.get('/ideas/:id',async(req,res)=>{
-  const idea = await Idea.findOne({_id:req.params.id})
-  res.render('ideas/edit',{idea:idea})
-})
-
-//update idea
-app.put('/ideas/:id',async(req,res)=>{
-  let errors=[]
-  if(req.body.title ===''){errors.push({text:'please enter a title'})}
-  if(req.body.details===''){errors.push({text:'Please enter some details'})}
-  if(errors.length>0){
-    req.flash('error_msg','Field Empty Idea not updated')
-    res.redirect('/ideas')}else{
-    const idea = await Idea.findOne({_id:req.params.id})
-    idea.title =req.body.title
-    idea.details=req.body.details
-    await idea.save()
-    req.flash('success_msg','Video Idea Updated')
-    res.redirect('/ideas')
-  }
-})
-
-// delete idea
-app.delete('/ideas/:id',async(req,res)=>{
-  await Idea.findOneAndDelete ({_id:req.params.id})
-  req.flash('alert')
-  req.flash('success_msg','Video Idea Removed')
-  res.redirect('/ideas')
-})
+//use route
+app.use('/ideas',ideas)
+app.use('/',home)
+app.use('/users',users)
 
 
 const Port = 5000;
